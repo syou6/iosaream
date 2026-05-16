@@ -1,0 +1,35 @@
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "OkiMission",
+    platforms: [
+        .iOS(.v18),
+        .macOS(.v15)
+    ],
+    products: [
+        .library(name: "OkiMissionCore", targets: ["OkiMissionCore"]),
+        .library(name: "OkiMissionEngine", targets: ["OkiMissionEngine"])
+    ],
+    targets: [
+        .target(
+            name: "OkiMissionCore",
+            path: "Sources/OkiMissionCore"
+        ),
+        .target(
+            name: "OkiMissionEngine",
+            dependencies: ["OkiMissionCore"],
+            path: "Sources/OkiMissionEngine"
+        ),
+        .testTarget(
+            name: "OkiMissionCoreTests",
+            dependencies: ["OkiMissionCore"],
+            path: "Tests/OkiMissionCoreTests"
+        ),
+        .testTarget(
+            name: "OkiMissionEngineTests",
+            dependencies: ["OkiMissionEngine", "OkiMissionCore"],
+            path: "Tests/OkiMissionEngineTests"
+        )
+    ]
+)
