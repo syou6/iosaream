@@ -28,45 +28,37 @@ public actor ProfileRepository {
     @discardableResult
     public func registerSuccess(on date: Date) throws -> Int {
         let profile = try current()
-        let calendar = Calendar(identifier: .gregorian)
-        let today = calendar.startOfDay(for: date)
-
-        if let last = profile.lastSuccessDate {
-            let lastDay = calendar.startOfDay(for: last)
-            if lastDay == today {
-                return profile.streakCount
-            }
-            let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
-            if lastDay == yesterday {
-                profile.streakCount += 1
-            } else {
-                profile.streakCount = 1
-                profile.currentStreakStartDate = today
-            }
-        } else {
-            profile.streakCount = 1
-            profile.currentStreakStartDate = today
-        }
-
-        profile.lastSuccessDate = today
-        profile.longestStreak = max(profile.longestStreak, profile.streakCount)
-        profile.updatedAt = Date()
+        let snapshot = StreakState(
+            currentStreak: profile.streakCount,
+            longestStreak: profile.longestStreak,
+            lastSuccessDate: profile.lastSuccessDate,
+            currentStreakStartDate: profile.currentStreakStartDate
+        )
+        let next = StreakCalculator.registerSuccess(state: snapshot, successDate: date)
+        applyStreak(next, to: profile)
         try modelContext.save()
-        return profile.streakCount
+        return next.currentStreak
     }
 
     public func breakStreakIfStale(reference: Date) throws {
         let profile = try current()
-        guard let last = profile.lastSuccessDate else { return }
-        let calendar = Calendar(identifier: .gregorian)
-        let lastDay = calendar.startOfDay(for: last)
-        let today = calendar.startOfDay(for: reference)
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
-        if lastDay < yesterday {
-            profile.streakCount = 0
-            profile.currentStreakStartDate = nil
-            profile.updatedAt = Date()
-            try modelContext.save()
-        }
+        let snapshot = StreakState(
+            currentStreak: profile.streakCount,
+            longestStreak: profile.longestStreak,
+            lastSuccessDate: profile.lastSuccessDate,
+            currentStreakStartDate: profile.currentStreakStartDate
+        )
+        let next = StreakCalculator.breakIfStale(state: snapshot, reference: reference)
+        guard next != snapshot else { return }
+        applyStreak(next, to: profile)
+        try modelContext.save()
+    }
+
+    private func applyStreak(_ state: StreakState, to profile: ProfileEntity) {
+        profile.streakCount = state.currentStreak
+        profile.longestStreak = state.longestStreak
+        profile.lastSuccessDate = state.lastSuccessDate
+        profile.currentStreakStartDate = state.currentStreakStartDate
+        profile.updatedAt = Date()
     }
 }
