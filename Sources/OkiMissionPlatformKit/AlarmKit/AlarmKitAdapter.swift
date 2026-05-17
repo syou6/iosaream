@@ -25,8 +25,14 @@ import OkiMissionServices
 // The AppIntent classes (StopAlarmIntent, StartMissionIntent) live in
 // the App target so they can route to the SwiftUI navigation layer.
 
-#if canImport(AlarmKit) && os(iOS)
+// AlarmKit's public iOS 26.4 SDK shape differs from the speculative API
+// described in this file (Alarm/AlarmConfiguration are not generic;
+// LiveActivityIntent requires explicit AppIntents import; etc.). The
+// adapter remains as a design reference but is disabled until rewritten
+// against the shipped SDK. Tracked separately; not blocking voice pack.
+#if false
 import AlarmKit
+import AppIntents
 
 public struct AlarmMetadataPayload: AlarmMetadata, Sendable {
     public let domainAlarmId: UUID

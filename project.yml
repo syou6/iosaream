@@ -16,6 +16,11 @@ targets:
     deploymentTarget: "26.0"
     sources:
       - path: App
+        excludes:
+          - "Voices/**"
+    resources:
+      - path: App/Voices
+        type: folder
     info:
       path: App/Info.plist
       properties:
@@ -27,6 +32,10 @@ targets:
           - UIInterfaceOrientationPortrait
         NSAlarmKitUsageDescription: 起床アラームを設定するために必要です
         NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.okimission.demo
+            CFBundleURLSchemes:
+              - okimission
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
@@ -44,6 +53,8 @@ targets:
         product: OkiMissionServices
       - package: OkiMission
         product: OkiMissionVoicePack
+      - package: OkiMission
+        product: OkiMissionPlatformKit
       - package: OkiMission
         product: OkiMissionFeatureKit
       - package: OkiMission

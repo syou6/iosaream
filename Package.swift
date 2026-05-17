@@ -87,6 +87,11 @@ let package = Package(
             name: "OkiMissionEngineVoiceTests",
             dependencies: ["OkiMissionEngine", "OkiMissionCore", "OkiMissionVoicePack"],
             path: "Tests/OkiMissionEngineVoiceTests"
+        ),
+        .testTarget(
+            name: "OkiMissionDomainVoiceTests",
+            dependencies: ["OkiMissionDomain", "OkiMissionCore", "OkiMissionVoicePack"],
+            path: "Tests/OkiMissionDomainVoiceTests"
         )
     ]
 )

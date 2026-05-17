@@ -70,8 +70,9 @@ public final class BackgroundTaskCoordinator: @unchecked Sendable {
 public enum BackgroundJobRunner {
     public static func runWithExpiration(
         _ task: BGTask,
-        work: @escaping () async -> Bool
+        work: @escaping @Sendable () async -> Bool
     ) {
+        nonisolated(unsafe) let task = task
         let workTask = Task {
             let success = await work()
             task.setTaskCompleted(success: success)

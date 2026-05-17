@@ -10,9 +10,9 @@ import OkiMissionCore
 import AppIntents
 
 public struct StopAlarmIntent: LiveActivityIntent {
-    public static var title: LocalizedStringResource = "アラームを停止"
-    public static var openAppWhenRun: Bool = false
-    public static var isDiscoverable: Bool = false
+    public static let title: LocalizedStringResource = "アラームを停止"
+    public static let openAppWhenRun: Bool = false
+    public static let isDiscoverable: Bool = false
 
     @Parameter(title: "Alarm ID")
     public var alarmIdString: String
@@ -34,9 +34,9 @@ public struct StopAlarmIntent: LiveActivityIntent {
 }
 
 public struct StartMissionIntent: LiveActivityIntent {
-    public static var title: LocalizedStringResource = "ミッションを開始"
-    public static var openAppWhenRun: Bool = true
-    public static var isDiscoverable: Bool = false
+    public static let title: LocalizedStringResource = "ミッションを開始"
+    public static let openAppWhenRun: Bool = true
+    public static let isDiscoverable: Bool = false
 
     @Parameter(title: "Alarm ID")
     public var alarmIdString: String
