@@ -19,7 +19,7 @@ public struct GeminiProxyClient: MissionGenerating {
     private let httpClient: any HTTPClient
     private let configuration: GeminiProxyConfiguration
     private let tokenProvider: AccessTokenProvider
-    private let dateFormatter: ISO8601DateFormatter
+    nonisolated(unsafe) private let dateFormatter: ISO8601DateFormatter
 
     public init(
         httpClient: any HTTPClient,

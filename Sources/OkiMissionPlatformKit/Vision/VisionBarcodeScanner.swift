@@ -19,7 +19,7 @@ public actor VisionBarcodeScanner: BarcodeScanning {
         self.symbologies = symbologies
     }
 
-    public func scan(_ frame: CameraFrame) async throws -> [BarcodeObservation] {
+    public func scan(_ frame: CameraFrame) async throws -> [OkiMissionServices.BarcodeObservation] {
         guard let pixelBuffer = await provider(frame) else { return [] }
         let request = VNDetectBarcodesRequest()
         request.symbologies = symbologies
@@ -34,7 +34,7 @@ public actor VisionBarcodeScanner: BarcodeScanning {
                 width: Double(obs.boundingBox.size.width),
                 height: Double(obs.boundingBox.size.height)
             )
-            return BarcodeObservation(
+            return OkiMissionServices.BarcodeObservation(
                 payload: payload,
                 symbology: obs.symbology.rawValue,
                 boundingBox: box,

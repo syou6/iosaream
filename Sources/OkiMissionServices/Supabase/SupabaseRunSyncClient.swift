@@ -21,7 +21,7 @@ public struct SupabaseRunSyncClient: RemoteRunSyncing {
     private let configuration: SupabaseConfiguration
     private let userIdProvider: UserIdProvider
     private let tokenProvider: TokenProvider
-    private let dateFormatter: ISO8601DateFormatter
+    nonisolated(unsafe) private let dateFormatter: ISO8601DateFormatter
 
     public init(
         httpClient: any HTTPClient,

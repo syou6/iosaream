@@ -2,6 +2,10 @@ import Foundation
 import SwiftData
 import OkiMissionCore
 
+// Swift 6.x #Predicate macro does not support comparing enum case key paths
+// (e.g. `$0.outcome == .success`). Predicates here filter what SwiftData can
+// express, and the success check is applied in-memory after the fetch.
+
 @ModelActor
 public actor MissionRunRepository {
     public func record(_ entity: MissionRunEntity) throws {
@@ -19,18 +23,22 @@ public actor MissionRunRepository {
 
     public func successCount(since: Date) throws -> Int {
         let descriptor = FetchDescriptor<MissionRunEntity>(
-            predicate: #Predicate { $0.startedAt >= since && $0.outcome == .success }
+            predicate: #Predicate { $0.startedAt >= since }
         )
-        return try modelContext.fetchCount(descriptor)
+        return try modelContext.fetch(descriptor)
+            .filter { $0.outcome == .success }
+            .count
     }
 
     public func recentKinds(limit: Int = 7) throws -> [MissionKind] {
         var descriptor = FetchDescriptor<MissionRunEntity>(
-            predicate: #Predicate { $0.outcome == .success },
             sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
         )
-        descriptor.fetchLimit = limit
-        return try modelContext.fetch(descriptor).map(\.missionKind)
+        descriptor.fetchLimit = limit * 4
+        return try modelContext.fetch(descriptor)
+            .filter { $0.outcome == .success }
+            .prefix(limit)
+            .map(\.missionKind)
     }
 
     public func unsynced(limit: Int = 50) throws -> [MissionRunEntity] {

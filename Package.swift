@@ -1,10 +1,10 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
     name: "OkiMission",
     platforms: [
-        .iOS(.v18),
+        .iOS(.v26),
         .macOS(.v15)
     ],
     products: [
@@ -14,7 +14,8 @@ let package = Package(
         .library(name: "OkiMissionServices", targets: ["OkiMissionServices"]),
         .library(name: "OkiMissionDesignSystem", targets: ["OkiMissionDesignSystem"]),
         .library(name: "OkiMissionPlatformKit", targets: ["OkiMissionPlatformKit"]),
-        .library(name: "OkiMissionFeatureKit", targets: ["OkiMissionFeatureKit"])
+        .library(name: "OkiMissionFeatureKit", targets: ["OkiMissionFeatureKit"]),
+        .library(name: "OkiMissionVoicePack", targets: ["OkiMissionVoicePack"])
     ],
     targets: [
         .target(
@@ -42,7 +43,7 @@ let package = Package(
         ),
         .target(
             name: "OkiMissionPlatformKit",
-            dependencies: ["OkiMissionCore", "OkiMissionServices"],
+            dependencies: ["OkiMissionCore", "OkiMissionServices", "OkiMissionVoicePack"],
             path: "Sources/OkiMissionPlatformKit"
         ),
         .target(
@@ -52,9 +53,15 @@ let package = Package(
                 "OkiMissionEngine",
                 "OkiMissionDomain",
                 "OkiMissionServices",
-                "OkiMissionDesignSystem"
+                "OkiMissionDesignSystem",
+                "OkiMissionVoicePack"
             ],
             path: "Sources/OkiMissionFeatureKit"
+        ),
+        .target(
+            name: "OkiMissionVoicePack",
+            dependencies: ["OkiMissionCore"],
+            path: "Sources/OkiMissionVoicePack"
         ),
         .testTarget(
             name: "OkiMissionCoreTests",
@@ -70,6 +77,11 @@ let package = Package(
             name: "OkiMissionServicesTests",
             dependencies: ["OkiMissionServices", "OkiMissionCore"],
             path: "Tests/OkiMissionServicesTests"
+        ),
+        .testTarget(
+            name: "OkiMissionVoicePackTests",
+            dependencies: ["OkiMissionVoicePack", "OkiMissionCore"],
+            path: "Tests/OkiMissionVoicePackTests"
         )
     ]
 )
