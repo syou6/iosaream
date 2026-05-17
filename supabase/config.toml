@@ -1,0 +1,47 @@
+# Supabase local development configuration.
+# Run `supabase start` after installing the Supabase CLI to bring up a local
+# Postgres + GoTrue + PostgREST stack against these migrations and functions.
+
+project_id = "okimission"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "okimission://auth-callback"
+additional_redirect_urls = ["https://oki-mission.app"]
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+
+[auth.email]
+enable_signup = false  # SiwA only
+
+[auth.external.apple]
+enabled = true
+client_id = "env(APPLE_SIWA_CLIENT_ID)"
+secret = "env(APPLE_SIWA_SECRET)"
+
+[functions.missions-generate]
+verify_jwt = true
+
+[functions.account-delete]
+verify_jwt = true
+
+[functions.billing-webhook]
+verify_jwt = false  # signature verification is internal to the function
+
+[functions.push-send]
+verify_jwt = false  # service-only via INTERNAL_RPC_KEY
