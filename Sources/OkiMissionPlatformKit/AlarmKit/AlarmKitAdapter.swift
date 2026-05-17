@@ -4,35 +4,23 @@ import OkiMissionServices
 
 // MARK: - AlarmKit live adapter
 //
-// IMPORTANT: this file is the best-effort live implementation of
-// AlarmServicing against Apple's AlarmKit framework. The framework was
-// previewed at WWDC 2025 but the public API names may shift between
-// Xcode 26 betas. Verify the following symbols when the SDK is
-// available and adjust as needed:
+// Rewritten against the shipped iOS 26.4 AlarmKit interface:
 //
-//   - AlarmManager.shared / .requestAuthorization()
-//   - AlarmConfiguration<Metadata>
-//   - AlarmAttributes(presentation:metadata:tintColor:)
-//   - AlarmPresentation.alert/countdown
-//   - AlarmPresentation.Alert(title:stopButton:secondaryButton:secondaryButtonBehavior:)
-//   - AlertConfiguration.Sound.named(_:)
-//   - Alarm.Schedule.fixed(_:) / .relative(.init(time:, repeats:))
-//   - Alarm.CountdownDuration(preAlert:postAlert:)
-//   - AlarmManager.schedule(_:) -> Alarm<Metadata>
-//   - AlarmManager.cancel(_:)
-//   - AlarmManager.alarmUpdates  (AsyncSequence)
-//
-// The AppIntent classes (StopAlarmIntent, StartMissionIntent) live in
-// the App target so they can route to the SwiftUI navigation layer.
+//   - AlarmManager.shared / .schedule(id:configuration:) / .cancel / .stop
+//   - AlarmManager.AlarmConfiguration<Metadata> with .alarm(...) / .timer(...)
+//   - Alarm is NOT generic — id, schedule, countdownDuration, state only
+//   - Alarm.State = .scheduled / .countdown / .paused / .alerting
+//   - cancel / stop / pause / resume are synchronous throws
+//   - alarmUpdates is AsyncSequence<[Alarm], Never>
+//   - LiveActivityIntent comes from AppIntents
+//   - AlarmButton is top-level (not AlarmPresentation.Button)
+//   - Sound type: ActivityKit.AlertConfiguration.AlertSound
 
-// AlarmKit's public iOS 26.4 SDK shape differs from the speculative API
-// described in this file (Alarm/AlarmConfiguration are not generic;
-// LiveActivityIntent requires explicit AppIntents import; etc.). The
-// adapter remains as a design reference but is disabled until rewritten
-// against the shipped SDK. Tracked separately; not blocking voice pack.
-#if false
+#if canImport(AlarmKit) && os(iOS)
 import AlarmKit
 import AppIntents
+import ActivityKit
+import SwiftUI
 
 public struct AlarmMetadataPayload: AlarmMetadata, Sendable {
     public let domainAlarmId: UUID
@@ -48,7 +36,7 @@ public actor AlarmKitAdapter: AlarmServicing {
     public typealias StopIntentFactory = @Sendable (UUID) -> any LiveActivityIntent
     public typealias SecondaryIntentFactory = @Sendable (UUID) -> any LiveActivityIntent
 
-    private let manager: AlarmManager
+    nonisolated(unsafe) private let manager: AlarmManager
     private let stopIntentFactory: StopIntentFactory
     private let secondaryIntentFactory: SecondaryIntentFactory?
 
@@ -84,7 +72,7 @@ public actor AlarmKitAdapter: AlarmServicing {
     }
 
     public func authorizationState() async -> AlarmAuthorizationState {
-        switch await manager.authorizationState {
+        switch manager.authorizationState {
         case .authorized: return .authorized
         case .denied: return .denied
         case .notDetermined: return .notDetermined
@@ -96,7 +84,7 @@ public actor AlarmKitAdapter: AlarmServicing {
     public func schedule(_ spec: AlarmSpec) async throws -> UUID {
         try spec.validate()
         let configuration = try buildConfiguration(from: spec)
-        let scheduled = try await manager.schedule(configuration)
+        let scheduled = try await manager.schedule(id: spec.id, configuration: configuration)
         let kitId = scheduled.id
         domainToKit[spec.id] = kitId
         kitToDomain[kitId] = spec.id
@@ -108,7 +96,7 @@ public actor AlarmKitAdapter: AlarmServicing {
     public func cancel(domainAlarmId: UUID) async throws {
         guard let kitId = domainToKit.removeValue(forKey: domainAlarmId) else { return }
         kitToDomain.removeValue(forKey: kitId)
-        try await manager.cancel(kitId)
+        try manager.cancel(id: kitId)
         continuation.yield(.cancelled(domainId: domainAlarmId))
     }
 
@@ -117,7 +105,7 @@ public actor AlarmKitAdapter: AlarmServicing {
         domainToKit.removeAll()
         kitToDomain.removeAll()
         for (domainId, kitId) in mapping {
-            try? await manager.cancel(kitId)
+            try? manager.cancel(id: kitId)
             continuation.yield(.cancelled(domainId: domainId))
         }
     }
@@ -128,9 +116,11 @@ public actor AlarmKitAdapter: AlarmServicing {
 
     public func bootstrap() {
         updatesTask?.cancel()
-        updatesTask = Task { [weak self] in
-            guard let self else { return }
+        nonisolated(unsafe) let manager = self.manager
+        nonisolated(unsafe) weak var weakSelf = self
+        updatesTask = Task {
             for await snapshot in manager.alarmUpdates {
+                guard let self = weakSelf else { return }
                 await self.process(snapshot: snapshot)
             }
         }
@@ -141,13 +131,11 @@ public actor AlarmKitAdapter: AlarmServicing {
         updatesTask = nil
     }
 
-    private func process(snapshot: [Alarm<AlarmMetadataPayload>]) {
+    private func process(snapshot: [Alarm]) {
         var seenKitIds = Set<UUID>()
         for alarm in snapshot {
             seenKitIds.insert(alarm.id)
-            let domainId = kitToDomain[alarm.id] ?? alarm.attributes.metadata.domainAlarmId
-            kitToDomain[alarm.id] = domainId
-            domainToKit[domainId] = alarm.id
+            guard let domainId = kitToDomain[alarm.id] else { continue }
             let mapped = AlarmKitAdapter.mapState(alarm.state)
             continuation.yield(.stateChanged(domainId: domainId, state: mapped))
         }
@@ -160,30 +148,32 @@ public actor AlarmKitAdapter: AlarmServicing {
         }
     }
 
-    private func buildConfiguration(from spec: AlarmSpec) throws -> AlarmConfiguration<AlarmMetadataPayload> {
+    private func buildConfiguration(
+        from spec: AlarmSpec
+    ) throws -> sending AlarmManager.AlarmConfiguration<AlarmMetadataPayload> {
         let metadata = AlarmMetadataPayload(
             domainAlarmId: spec.id,
             missionTemplateId: spec.missionTemplateId
         )
 
-        let stopButton = AlarmPresentation.Button(
-            text: LocalizedStringResource(stringLiteral: "停止"),
-            textColor: .white,
-            systemImageName: "stop.fill"
-        )
-        let secondaryButton: AlarmPresentation.Button? = spec.missionTemplateId != nil
-            ? AlarmPresentation.Button(
+        let secondaryButton: AlarmButton? = spec.missionTemplateId != nil
+            ? AlarmButton(
                 text: LocalizedStringResource(stringLiteral: "ミッション"),
                 textColor: .white,
                 systemImageName: "play.fill"
             )
             : nil
 
+        let stopButton = AlarmButton(
+            text: LocalizedStringResource(stringLiteral: "停止"),
+            textColor: .white,
+            systemImageName: "stop.fill"
+        )
         let alert = AlarmPresentation.Alert(
             title: LocalizedStringResource(stringLiteral: spec.label),
             stopButton: stopButton,
             secondaryButton: secondaryButton,
-            secondaryButtonBehavior: .custom
+            secondaryButtonBehavior: secondaryButton == nil ? nil : .custom
         )
 
         let presentation = AlarmPresentation(alert: alert)
@@ -192,20 +182,22 @@ public actor AlarmKitAdapter: AlarmServicing {
             metadata: metadata,
             tintColor: .accentColor
         )
-        let sound: AlertConfiguration.Sound = .named(spec.soundId + ".caf")
+
+        let sound: AlertConfiguration.AlertSound = .named(spec.soundId)
         let stopIntent = stopIntentFactory(spec.id)
         let secondaryIntent = secondaryIntentFactory?(spec.id)
 
         switch spec.scheduleKind {
         case .oneShot:
             guard let fireDate = spec.fireDate else { throw DomainError.invalidAlarmConfig }
-            return AlarmConfiguration(
+            return .alarm(
                 schedule: .fixed(fireDate),
                 attributes: attributes,
-                sound: sound,
                 stopIntent: stopIntent,
-                secondaryIntent: secondaryIntent
+                secondaryIntent: secondaryIntent,
+                sound: sound
             )
+
         case .recurringWeekly:
             guard let time = spec.timeOfDay, !spec.weekdayMask.isEmpty else {
                 throw DomainError.invalidAlarmConfig
@@ -215,35 +207,34 @@ public actor AlarmKitAdapter: AlarmServicing {
                 time: .init(hour: time.hour, minute: time.minute),
                 repeats: .weekly(weekdays)
             )
-            return AlarmConfiguration(
+            return .alarm(
                 schedule: .relative(relative),
                 attributes: attributes,
-                sound: sound,
                 stopIntent: stopIntent,
-                secondaryIntent: secondaryIntent
+                secondaryIntent: secondaryIntent,
+                sound: sound
             )
+
         case .countdown:
             guard let seconds = spec.countdownSeconds, seconds > 0 else {
                 throw DomainError.invalidAlarmConfig
             }
-            let duration = Alarm.CountdownDuration(preAlert: TimeInterval(seconds), postAlert: 60)
-            return AlarmConfiguration(
-                countdownDuration: duration,
+            return .timer(
+                duration: TimeInterval(seconds),
                 attributes: attributes,
-                sound: sound,
                 stopIntent: stopIntent,
-                secondaryIntent: secondaryIntent
+                secondaryIntent: secondaryIntent,
+                sound: sound
             )
         }
     }
 
-    private static func mapState(_ kitState: Alarm<AlarmMetadataPayload>.State) -> AlarmKitState {
+    private static func mapState(_ kitState: Alarm.State) -> AlarmKitState {
         switch kitState {
         case .scheduled: return .scheduled
         case .alerting: return .alerting
         case .paused: return .paused
-        case .completed: return .completed
-        case .cancelled: return .cancelled
+        case .countdown: return .scheduled
         @unknown default: return .scheduled
         }
     }

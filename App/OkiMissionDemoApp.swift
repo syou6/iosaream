@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import OkiMissionCore
+import OkiMissionEngine
 import OkiMissionServices
 import OkiMissionVoicePack
 import OkiMissionPlatformKit
@@ -85,14 +86,23 @@ final class DemoModel {
     )
     private var alarmTask: Task<Void, Never>?
     private var missionStartedAt: Date?
+    private let cue: MissionVoiceCue
 
     init() {
         let stub = VoicePackSamples.samplePaidPack(
             characterId: CharacterId("oshi-a"),
             iapProductId: "com.okimission.voicepack.oshia"
         )
-        self.ownership = VoicePackOwnership(ownedPackIds: [stub.id])
+        let owned = VoicePackOwnership(ownedPackIds: [stub.id])
+        self.ownership = owned
         self.pack = stub
+        self.cue = MissionVoiceCue(
+            player: AVFoundationVoicePlayer(
+                locator: BundleVoiceAssetLocator(bundle: .main, subdirectory: "Voices")
+            ),
+            pack: stub,
+            ownership: owned
+        )
     }
 
     var nextAlarmLabel: String {
@@ -160,18 +170,7 @@ final class DemoModel {
     }
 
     private func play(_ context: VoiceContext, pickIndex: Int = 0) async {
-        let resolver = VoicePackResolver()
-        do {
-            let clip = try resolver.resolve(
-                context: context,
-                from: pack,
-                ownership: ownership,
-                pickIndex: pickIndex
-            )
-            try await player.play(clip, from: pack)
-        } catch {
-            return
-        }
+        await cue.fire(context, pickIndex: pickIndex)
     }
 }
 
