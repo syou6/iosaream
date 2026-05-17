@@ -15,12 +15,15 @@ public actor MissionExperience {
         }
     }
 
+    public let runId: UUID
     public let template: GeneratedMissionTemplate
     public let configuration: Configuration
 
     private var machine: MissionStateMachine
     private var antiCheatContext: AntiCheatContext
     private let evaluator: AntiCheatEvaluator
+    private var lastAntiCheatScore: Int = 0
+    private var lastAntiCheatSignals: [AntiCheatSignal] = []
 
     private var mathEngine: MathMissionEngine?
     private var pushupEngine: PushupMissionEngine?
@@ -34,8 +37,10 @@ public actor MissionExperience {
 
     public init(
         template: GeneratedMissionTemplate,
-        configuration: Configuration = Configuration()
+        configuration: Configuration = Configuration(),
+        runId: UUID = UUID()
     ) throws {
+        self.runId = runId
         self.template = template
         self.configuration = configuration
         self.machine = MissionStateMachine()
@@ -229,12 +234,73 @@ public actor MissionExperience {
         let finalState: MissionState
         switch verdict {
         case .clean:
+            lastAntiCheatSignals = []
+            lastAntiCheatScore = 0
             finalState = machine.verified(clean: true)
         case .cheated(let signals):
+            lastAntiCheatSignals = signals
+            lastAntiCheatScore = MissionExperience.score(for: signals)
             finalState = machine.verified(clean: false, signals: signals)
         }
         emit(.stateChanged(finalState))
         continuation.finish()
+    }
+
+    public func finalRecord(alarmId: UUID? = nil, networkLatencyMs: Int? = nil) -> MissionRunRecord {
+        let outcome: MissionOutcome
+        var failureReason: MissionFailureReason?
+        switch machine.state {
+        case .completed:
+            outcome = .success
+        case .failed(let reason):
+            outcome = .failure
+            failureReason = reason
+        case .cancelled:
+            outcome = .cancelled
+        case .cheated:
+            outcome = .cheated
+        default:
+            outcome = .cancelled
+        }
+        let now = configuration.clock.now()
+        let duration = now.timeIntervalSince(antiCheatContext.sessionStart)
+        return MissionRunRecord(
+            id: runId,
+            alarmId: alarmId,
+            templateId: template.id,
+            missionKind: template.kind,
+            startedAt: antiCheatContext.sessionStart,
+            completedAt: machine.state.isTerminal ? now : nil,
+            outcome: outcome,
+            failureReason: failureReason,
+            durationSeconds: duration,
+            repsCompleted: completedReps(),
+            antiCheatScore: lastAntiCheatScore,
+            signals: lastAntiCheatSignals,
+            networkLatencyMs: networkLatencyMs
+        )
+    }
+
+    private func completedReps() -> Int {
+        if let engine = mathEngine { return engine.correctCount }
+        if let engine = pushupEngine { return engine.completedReps }
+        if let engine = squatEngine { return engine.completedReps }
+        if let engine = shakeEngine { return engine.completedShakes }
+        if let engine = huntEngine { return engine.foundCount }
+        if let engine = barcodeEngine { return engine.scannedPayloads.count }
+        return 0
+    }
+
+    private static func score(for signals: [AntiCheatSignal]) -> Int {
+        signals.reduce(0) { total, signal in
+            switch signal {
+            case .backgrounded(let count): return total + 2 * count
+            case .clockTampered: return total + 5
+            case .screenshotsTaken(let count): return total + count
+            case .frameGaps: return total + 3
+            case .tooFast: return total + 4
+            }
+        }
     }
 
     private func isCurrentEngineComplete() -> Bool {
