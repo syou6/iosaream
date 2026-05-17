@@ -12,7 +12,8 @@ let package = Package(
         .library(name: "OkiMissionEngine", targets: ["OkiMissionEngine"]),
         .library(name: "OkiMissionDomain", targets: ["OkiMissionDomain"]),
         .library(name: "OkiMissionServices", targets: ["OkiMissionServices"]),
-        .library(name: "OkiMissionDesignSystem", targets: ["OkiMissionDesignSystem"])
+        .library(name: "OkiMissionDesignSystem", targets: ["OkiMissionDesignSystem"]),
+        .library(name: "OkiMissionPlatformKit", targets: ["OkiMissionPlatformKit"])
     ],
     targets: [
         .target(
@@ -37,6 +38,11 @@ let package = Package(
         .target(
             name: "OkiMissionDesignSystem",
             path: "Sources/OkiMissionDesignSystem"
+        ),
+        .target(
+            name: "OkiMissionPlatformKit",
+            dependencies: ["OkiMissionCore", "OkiMissionServices"],
+            path: "Sources/OkiMissionPlatformKit"
         ),
         .testTarget(
             name: "OkiMissionCoreTests",
