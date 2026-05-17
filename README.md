@@ -39,6 +39,7 @@ supabase/
 
 ## Documentation
 
+- `docs/plan.md` — full product / technical design document (4,832 lines). The source plan that drove every implementation phase in this repo.
 - `docs/architecture.md` — module map, data flow, state machine, anti-cheat scoring.
 - `docs/startup-checklist.md` — week-by-week setup plan from clone to App Store submission.
 - `docs/ios-app-target-setup.md` — one-time Xcode project creation, SPM linking, capabilities.
