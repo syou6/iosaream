@@ -2,6 +2,7 @@ import Foundation
 #if canImport(SwiftUI)
 import SwiftUI
 import OkiMissionCore
+import OkiMissionServices
 import OkiMissionDesignSystem
 
 public struct AlarmEditorView: View {
@@ -34,14 +35,18 @@ public struct AlarmEditorView: View {
                     Picker("時", selection: $hour) {
                         ForEach(0..<24, id: \.self) { Text("\($0)") }
                     }
+                    #if os(iOS)
                     .pickerStyle(.wheel)
+                    #endif
                     .frame(maxWidth: 80)
                     Text(":")
                         .font(AppFont.displayClock)
                     Picker("分", selection: $minute) {
                         ForEach(0..<60, id: \.self) { Text(String(format: "%02d", $0)) }
                     }
+                    #if os(iOS)
                     .pickerStyle(.wheel)
+                    #endif
                     .frame(maxWidth: 80)
                 }
             }

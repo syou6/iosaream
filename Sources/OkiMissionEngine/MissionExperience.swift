@@ -1,17 +1,21 @@
 import Foundation
 import OkiMissionCore
+import OkiMissionVoicePack
 
 public actor MissionExperience {
     public struct Configuration: Sendable {
         public var antiCheatPolicy: AntiCheatPolicy
         public var clock: any AppClock
+        public var voiceCue: MissionVoiceCue?
 
         public init(
             antiCheatPolicy: AntiCheatPolicy = .default,
-            clock: any AppClock = SystemClock()
+            clock: any AppClock = SystemClock(),
+            voiceCue: MissionVoiceCue? = nil
         ) {
             self.antiCheatPolicy = antiCheatPolicy
             self.clock = clock
+            self.voiceCue = voiceCue
         }
     }
 
@@ -89,6 +93,7 @@ public actor MissionExperience {
     public func start() {
         let next = machine.start()
         emit(.stateChanged(next))
+        fireCue(.missionStart)
     }
 
     public func reportCapability(_ capability: Capability, authorized: Bool) {
@@ -204,6 +209,7 @@ public actor MissionExperience {
     public func fail(_ reason: MissionFailureReason) {
         let next = machine.fail(reason)
         emit(.stateChanged(next))
+        fireCue(.missionFailure)
         continuation.finish()
     }
 
@@ -243,7 +249,16 @@ public actor MissionExperience {
             finalState = machine.verified(clean: false, signals: signals)
         }
         emit(.stateChanged(finalState))
+        switch verdict {
+        case .clean: fireCue(.missionSuccess)
+        case .cheated: fireCue(.missionFailure)
+        }
         continuation.finish()
+    }
+
+    private func fireCue(_ context: VoiceContext, pickIndex: Int = 0) {
+        guard let cue = configuration.voiceCue else { return }
+        Task { await cue.fire(context, pickIndex: pickIndex) }
     }
 
     public func finalRecord(alarmId: UUID? = nil, networkLatencyMs: Int? = nil) -> MissionRunRecord {

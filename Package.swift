@@ -24,12 +24,12 @@ let package = Package(
         ),
         .target(
             name: "OkiMissionEngine",
-            dependencies: ["OkiMissionCore"],
+            dependencies: ["OkiMissionCore", "OkiMissionVoicePack"],
             path: "Sources/OkiMissionEngine"
         ),
         .target(
             name: "OkiMissionDomain",
-            dependencies: ["OkiMissionCore"],
+            dependencies: ["OkiMissionCore", "OkiMissionVoicePack"],
             path: "Sources/OkiMissionDomain"
         ),
         .target(
@@ -82,6 +82,11 @@ let package = Package(
             name: "OkiMissionVoicePackTests",
             dependencies: ["OkiMissionVoicePack", "OkiMissionCore"],
             path: "Tests/OkiMissionVoicePackTests"
+        ),
+        .testTarget(
+            name: "OkiMissionEngineVoiceTests",
+            dependencies: ["OkiMissionEngine", "OkiMissionCore", "OkiMissionVoicePack"],
+            path: "Tests/OkiMissionEngineVoiceTests"
         )
     ]
 )

@@ -29,7 +29,9 @@ public struct AlarmListView: View {
                         }
                     }
                 }
+                #if os(iOS)
                 .listStyle(.insetGrouped)
+                #endif
             }
         }
         .navigationTitle("アラーム")

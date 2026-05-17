@@ -9,7 +9,8 @@ public enum SchemaV1: VersionedSchema {
             AlarmEntity.self,
             MissionTemplateEntity.self,
             MissionRunEntity.self,
-            ProfileEntity.self
+            ProfileEntity.self,
+            VoicePackOwnershipEntity.self
         ]
     }
 }

@@ -37,7 +37,9 @@ public struct MathMissionView: View {
                     .foregroundStyle(AppColor.textPrimary)
 
                 TextField("答え", text: $inputText)
+                    #if os(iOS)
                     .keyboardType(.numberPad)
+                    #endif
                     .multilineTextAlignment(.center)
                     .font(AppFont.title1)
                     .padding(AppSpacing.md)

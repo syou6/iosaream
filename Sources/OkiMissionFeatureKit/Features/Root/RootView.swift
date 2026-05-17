@@ -46,7 +46,9 @@ public struct RootView: View {
         }
         .tint(AppColor.brand)
         .sheet(item: $router.modal, content: modalView)
+        #if os(iOS)
         .fullScreenCover(item: $router.fullScreen, content: fullScreenView)
+        #endif
         .onOpenURL { url in
             _ = router.handleDeepLink(url)
         }

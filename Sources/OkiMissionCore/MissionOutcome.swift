@@ -15,7 +15,7 @@ public enum MissionFailureReason: String, Codable, Sendable {
     case interruptedTooLong
 }
 
-public enum AntiCheatSignal: Equatable, Sendable, Codable {
+public enum AntiCheatSignal: Hashable, Sendable, Codable {
     case backgrounded(count: Int)
     case clockTampered(diffSeconds: Double)
     case screenshotsTaken(count: Int)

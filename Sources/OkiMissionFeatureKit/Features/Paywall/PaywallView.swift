@@ -30,7 +30,9 @@ public struct PaywallView: View {
                 .padding(AppSpacing.lg)
             }
             .navigationTitle("OkiMission Pro")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("閉じる", action: dismiss.callAsFunction)

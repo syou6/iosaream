@@ -1,6 +1,6 @@
 import Foundation
 
-public struct MissionRunRecord: Equatable, Sendable, Codable, Identifiable {
+public struct MissionRunRecord: Hashable, Sendable, Codable, Identifiable {
     public let id: UUID
     public var alarmId: UUID?
     public var templateId: UUID?
