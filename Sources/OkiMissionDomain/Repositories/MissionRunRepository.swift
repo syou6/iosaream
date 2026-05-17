@@ -32,4 +32,25 @@ public actor MissionRunRepository {
         descriptor.fetchLimit = limit
         return try modelContext.fetch(descriptor).map(\.missionKind)
     }
+
+    public func unsynced(limit: Int = 50) throws -> [MissionRunEntity] {
+        var descriptor = FetchDescriptor<MissionRunEntity>(
+            predicate: #Predicate { $0.syncedAt == nil },
+            sortBy: [SortDescriptor(\.startedAt)]
+        )
+        descriptor.fetchLimit = limit
+        return try modelContext.fetch(descriptor)
+    }
+
+    public func markSynced(ids: [UUID], at date: Date = Date()) throws {
+        guard !ids.isEmpty else { return }
+        let idSet = Set(ids)
+        let descriptor = FetchDescriptor<MissionRunEntity>(
+            predicate: #Predicate { idSet.contains($0.id) }
+        )
+        for entity in try modelContext.fetch(descriptor) {
+            entity.syncedAt = date
+        }
+        try modelContext.save()
+    }
 }

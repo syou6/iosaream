@@ -1,24 +1,19 @@
 import Foundation
-import SwiftData
-import OkiMissionCore
 
-@Model
-public final class MissionRunEntity {
-    @Attribute(.unique) public var id: UUID
+public struct MissionRunRecord: Equatable, Sendable, Codable, Identifiable {
+    public let id: UUID
     public var alarmId: UUID?
     public var templateId: UUID?
     public var missionKind: MissionKind
     public var startedAt: Date
     public var completedAt: Date?
     public var outcome: MissionOutcome
-    public var failureReasonRaw: String?
+    public var failureReason: MissionFailureReason?
     public var durationSeconds: Double
     public var repsCompleted: Int
     public var antiCheatScore: Int
-    public var signalsJSON: String?
+    public var signals: [AntiCheatSignal]
     public var networkLatencyMs: Int?
-    public var createdAt: Date
-    public var syncedAt: Date?
 
     public init(
         id: UUID = UUID(),
@@ -28,14 +23,12 @@ public final class MissionRunEntity {
         startedAt: Date,
         completedAt: Date? = nil,
         outcome: MissionOutcome,
-        failureReasonRaw: String? = nil,
+        failureReason: MissionFailureReason? = nil,
         durationSeconds: Double,
         repsCompleted: Int = 0,
         antiCheatScore: Int = 0,
-        signalsJSON: String? = nil,
-        networkLatencyMs: Int? = nil,
-        createdAt: Date = Date(),
-        syncedAt: Date? = nil
+        signals: [AntiCheatSignal] = [],
+        networkLatencyMs: Int? = nil
     ) {
         self.id = id
         self.alarmId = alarmId
@@ -44,13 +37,11 @@ public final class MissionRunEntity {
         self.startedAt = startedAt
         self.completedAt = completedAt
         self.outcome = outcome
-        self.failureReasonRaw = failureReasonRaw
+        self.failureReason = failureReason
         self.durationSeconds = durationSeconds
         self.repsCompleted = repsCompleted
         self.antiCheatScore = antiCheatScore
-        self.signalsJSON = signalsJSON
+        self.signals = signals
         self.networkLatencyMs = networkLatencyMs
-        self.createdAt = createdAt
-        self.syncedAt = syncedAt
     }
 }
